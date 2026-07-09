@@ -1,0 +1,40 @@
+# Local infrastructure for the Financial Multi-Agent Intelligence System.
+#
+# Currently provides a single Postgres service with the pgvector extension
+# available (the `pgvector/pgvector` image ships the extension preinstalled;
+# the backend still runs `CREATE EXTENSION vector` via db/schema.sql).
+#
+# Usage:
+#   cp .env.example .env                     # first time: create local config
+#   docker compose up -d                     # start in the background
+#   docker compose ps                        # check status
+#   docker compose logs -f postgres          # follow logs
+#   docker compose down                      # stop (keeps the data volume)
+#   docker compose down -v                   # stop AND delete data (fresh start)
+#
+# The backend connects using DATABASE_URL (see ../be/.env.example), e.g.:
+#   postgresql://finapp:finapp@localhost:5432/financial
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: fmais-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finapp}
+      POSTGRES_DB: ${POSTGRES_DB:-financial}
+    ports:
+      # host:container — override the host port via POSTGRES_PORT in .env.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Named volume for persistent data across restarts.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finapp} -d ${POSTGRES_DB:-financial}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
