@@ -15,6 +15,7 @@ Run locally:
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -32,6 +33,15 @@ app = FastAPI(
 
 CHART_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/charts", StaticFiles(directory=str(CHART_DIR)), name="charts")
+
+# The Angular dev server proxies /agent, /ask, /charts (no CORS needed there);
+# this covers direct browser access from the FE origin as well.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class AskRequest(BaseModel):

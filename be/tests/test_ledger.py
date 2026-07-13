@@ -91,3 +91,42 @@ def test_chart_registration_assigns_c_ids():
     )
     assert chart.id == "C1"
     assert ledger.has("C1")
+
+
+def test_citation_cap_appends_nudge_and_keeps_alignment():
+    ledger = EvidenceLedger()
+    rows = [
+        _row(fiscal_period=f"Q{1 + i % 4}", fiscal_year=2000 + i, revenue=float(i))
+        for i in range(70)
+    ]
+    safe_rows, cite_maps, nudge = ledger.record_sql("q", rows)
+
+    assert len(cite_maps) == len(safe_rows) == 70
+    assert cite_maps[0] and cite_maps[-1] == {}  # early rows cited, capped rows empty
+    assert "Citation cap" in nudge
+
+
+def test_values_for_query_granularity_exposes_row_cells():
+    ledger = EvidenceLedger()
+    _, cite_maps, _ = ledger.record_sql("q", [{"total": 61643000000.0, "n": 12}])
+    assert set(ledger.values_for(cite_maps[0]["*"])) == {61643000000.0, 12.0}
+
+
+def test_values_for_document_scales_unit_words():
+    result = SearchResult(
+        document_id="d", chunk_index=0, text="cash flow of $1.4 billion", score=0.5,
+        title=None, metadata={},
+    )
+    ledger = EvidenceLedger()
+    (cite,) = ledger.record_documents("q", None, [result])
+    values = ledger.values_for(cite.id)
+    assert 1.4 in values and 1.4e9 in values
+
+
+def test_record_table_assigns_t_ids():
+    from agents.schemas import TableCell
+
+    ledger = EvidenceLedger()
+    table = ledger.record_table("t", ["Quarter", "Revenue"], [[TableCell(text="Q1")]], "| |")
+    assert table.id == "T1"
+    assert ledger.has("T1")

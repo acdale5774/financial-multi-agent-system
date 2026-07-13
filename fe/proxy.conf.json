@@ -1,0 +1,6 @@
+{
+  "/agent": { "target": "http://localhost:8000", "secure": false },
+  "/ask": { "target": "http://localhost:8000", "secure": false },
+  "/charts": { "target": "http://localhost:8000", "secure": false },
+  "/health": { "target": "http://localhost:8000", "secure": false }
+}

@@ -38,6 +38,25 @@ class ChartSeries(BaseModel):
     citation_ids: list[str]
 
 
+class TableRow(BaseModel):
+    """One table row: its label plus one evidence id per value column."""
+
+    label: str
+    citation_ids: list[str]
+
+
+def _fmt_value(value: float) -> str:
+    """Human display for hydrated cells: 48211000000 -> '48.2B'."""
+    for cutoff, suffix in ((1e12, "T"), (1e9, "B"), (1e6, "M")):
+        if abs(value) >= cutoff:
+            return f"{value / cutoff:,.1f}{suffix}"
+    if abs(value) >= 1e4:
+        return f"{value / 1e3:,.1f}K"
+    if value == int(value):
+        return f"{int(value):,}"
+    return f"{value:,.2f}"
+
+
 def make_toolsets(
     ledger: EvidenceLedger, database_url: str | None = None
 ) -> dict[str, list[Any]]:
@@ -232,14 +251,31 @@ def make_toolsets(
                         f"Series {s.name!r} has {len(s.citation_ids)} citation ids "
                         f"but x has {len(x)} labels — they must align."
                     )
+                if len(set(s.citation_ids)) != len(s.citation_ids):
+                    raise ValueError(
+                        f"Series {s.name!r} repeats a citation id — each x "
+                        "position must plot its own cited data point."
+                    )
                 values = []
-                for cid in s.citation_ids:
+                for cid, label in zip(s.citation_ids, x, strict=True):
                     record = ledger.get_simfin(cid)
                     if record is None or record.granularity != "datapoint":
                         raise ValueError(
                             f"{cid!r} is not a SimFin data-point citation id; "
                             "only cited data points can be plotted."
                         )
+                    if record.fiscal_period and record.fiscal_year:
+                        expected = (record.fiscal_period, str(record.fiscal_year))
+                        if (
+                            record.fiscal_period not in label.upper()
+                            or str(record.fiscal_year) not in label
+                        ):
+                            raise ValueError(
+                                f"x label {label!r} does not name the cited "
+                                f"point's period {expected[0]} {expected[1]} — "
+                                "label each x position with its fiscal period "
+                                "and year (e.g. 'Q1 2025')."
+                            )
                     values.append(record.value)
                     used_ids.append(cid)
                 hydrated.append({"name": s.name, "values": values})
@@ -259,6 +295,55 @@ def make_toolsets(
 
         return _guard(run)
 
+    @tool
+    def create_table(title: str, columns: list[str], rows: list[TableRow]) -> str:
+        """Build a structured multi-metric table from ALREADY-CITED data
+        points. columns: header names — the FIRST is the row-label column
+        (e.g. 'Quarter'), the rest are value columns (e.g. 'Revenue',
+        'Net Income', 'EPS'). Each row gives its label plus one SimFin
+        citation id per value column; the values are looked up from the
+        cited evidence — you never pass numbers. Returns ready-to-embed
+        markdown (already carrying the citation markers): paste it into
+        your answer verbatim."""
+
+        def run() -> str:
+            from agents.schemas import TableCell
+
+            if len(columns) < 2:
+                raise ValueError(
+                    "Need at least a label column and one value column."
+                )
+            cell_rows: list[list[TableCell]] = []
+            lines = [
+                "| " + " | ".join(columns) + " |",
+                "|" + "---|" * len(columns),
+            ]
+            for row in rows:
+                if len(row.citation_ids) != len(columns) - 1:
+                    raise ValueError(
+                        f"Row {row.label!r} has {len(row.citation_ids)} citation "
+                        f"ids but there are {len(columns) - 1} value columns."
+                    )
+                cells = [TableCell(text=row.label)]
+                rendered = [row.label]
+                for cid in row.citation_ids:
+                    record = ledger.get_simfin(cid)
+                    if record is None or record.granularity != "datapoint":
+                        raise ValueError(
+                            f"{cid!r} is not a SimFin data-point citation id; "
+                            "only cited data points can fill table cells."
+                        )
+                    cells.append(TableCell(value=record.value, citation_id=cid))
+                    rendered.append(f"{_fmt_value(record.value)} [{cid}]")
+                cell_rows.append(cells)
+                lines.append("| " + " | ".join(rendered) + " |")
+
+            markdown = "\n".join(lines)
+            table = ledger.record_table(title, columns, cell_rows, markdown)
+            return json.dumps({"table_id": table.id, "markdown": markdown})
+
+        return _guard(run)
+
     quant = [
         list_tables,
         describe_table,
@@ -266,6 +351,7 @@ def make_toolsets(
         resolve_company,
         query_financials,
         create_chart,
+        create_table,
     ]
     docs = [document_coverage, search_documents, resolve_company]
     hybrid = quant + [document_coverage, search_documents]

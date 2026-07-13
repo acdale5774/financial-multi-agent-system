@@ -28,6 +28,8 @@ from agents.schemas import (
     DocumentCitation,
     SimFinCitation,
     SqlQueryRecord,
+    TableCell,
+    TableRecord,
 )
 from tools.document_search_tool import SearchResult
 
@@ -55,10 +57,14 @@ class EvidenceLedger:
     def __init__(self) -> None:
         self.citations: dict[str, Citation] = {}
         self.charts: dict[str, ChartRecord] = {}
+        self.tables: dict[str, TableRecord] = {}
         self.sql_queries: list[SqlQueryRecord] = []
         self.searches: list[dict[str, Any]] = []
         # Dedup: identical evidence re-retrieved later reuses its id.
         self._by_key: dict[tuple, str] = {}
+        # Full chunk text per D-id (validation-only; responses carry snippets).
+        self._doc_texts: dict[str, str] = {}
+        self._doc_values: dict[str, list[float]] = {}
 
     # -- SimFin ---------------------------------------------------------------
 
@@ -78,8 +84,10 @@ class EvidenceLedger:
 
         cite_maps: list[dict[str, str]] = []
         minted_total = 0
+        capped = False
         for row in rows:
             if minted_total >= MAX_CITATIONS_PER_QUERY:
+                capped = True
                 cite_maps.append({})
                 continue
             per_column = self._mint_row(row, sql_index)
@@ -87,7 +95,14 @@ class EvidenceLedger:
             cite_maps.append({col: c.id for col, c in per_column.items()})
 
         if minted_total:
-            return rows, cite_maps, None
+            nudge = (
+                f"Citation cap ({MAX_CITATIONS_PER_QUERY} data points per query) "
+                "reached — later rows have no cites. Aggregate or LIMIT in SQL "
+                "if you need to cite figures from them."
+                if capped
+                else None
+            )
+            return rows, cite_maps, nudge
 
         # Aggregate / non-keyed result: keep it traceable at query granularity.
         fallback = self._add(
@@ -166,7 +181,9 @@ class EvidenceLedger:
                 snippet=r.text[:_SNIPPET_CHARS],
                 score=round(r.score, 4),
             )
-            minted.append(self._add(citation, key=("doc", r.document_id, r.chunk_index)))
+            added = self._add(citation, key=("doc", r.document_id, r.chunk_index))
+            self._doc_texts.setdefault(added.id, r.text)
+            minted.append(added)
         return minted
 
     # -- Charts ---------------------------------------------------------------
@@ -183,14 +200,70 @@ class EvidenceLedger:
         self.charts[chart.id] = chart
         return chart
 
+    # -- Tables ---------------------------------------------------------------
+
+    def record_table(
+        self, title: str, columns: list[str], rows: list[list[TableCell]], markdown: str
+    ) -> TableRecord:
+        """Register a citation-hydrated table (see lc_tools.create_table)."""
+        table = TableRecord(
+            id=f"T{len(self.tables) + 1}",
+            title=title,
+            columns=columns,
+            rows=rows,
+            markdown=markdown,
+        )
+        self.tables[table.id] = table
+        return table
+
     # -- Lookup ---------------------------------------------------------------
 
     def has(self, citation_id: str) -> bool:
-        return citation_id in self.citations or citation_id in self.charts
+        return (
+            citation_id in self.citations
+            or citation_id in self.charts
+            or citation_id in self.tables
+        )
 
     def get_simfin(self, citation_id: str) -> SimFinCitation | None:
         record = self.citations.get(citation_id)
         return record if isinstance(record, SimFinCitation) else None
+
+    def values_for(self, citation_id: str) -> list[float]:
+        """Checkable evidence values behind a citation id, for the lints.
+
+        Datapoint citations carry their own value; query-granularity
+        citations expose every numeric cell of the recorded rows (the claim
+        must appear somewhere in the actual result); document citations
+        expose the numbers stated in the chunk text (unit-scaled, so
+        "$1.4 billion" in a transcript yields 1.4 and 1.4e9). Charts carry no
+        values.
+        """
+        record = self.citations.get(citation_id)
+        if isinstance(record, SimFinCitation):
+            if record.granularity == "datapoint":
+                return [record.value] if record.value is not None else []
+            values = [
+                float(v)
+                for row in self.sql_queries[record.sql_index].rows
+                for v in row.values()
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            ]
+            return values[:500]
+        if isinstance(record, DocumentCitation):
+            if citation_id not in self._doc_values:
+                from agents.citations import _UNIT_SCALE, parse_numbers
+
+                values = []
+                for number, unit, _ in parse_numbers(self._doc_texts.get(citation_id, "")):
+                    values.append(number)
+                    if unit in _UNIT_SCALE:
+                        values.append(number * _UNIT_SCALE[unit])
+                    elif unit == "%":
+                        values.append(number / 100)
+                self._doc_values[citation_id] = values[:500]
+            return self._doc_values[citation_id]
+        return []
 
     def cited_subset(self, ids: list[str]) -> list[Citation]:
         """The citation records for `ids`, deduplicated, in given order."""

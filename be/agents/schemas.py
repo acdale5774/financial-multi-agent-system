@@ -100,6 +100,25 @@ class ChartRecord(BaseModel):
     citation_ids: list[str] = []
 
 
+class TableCell(BaseModel):
+    """One table cell: either a label or a citation-hydrated value."""
+
+    text: str | None = None
+    value: float | None = None
+    citation_id: str | None = None
+
+
+class TableRecord(BaseModel):
+    """A structured multi-metric table; every value cell traces to evidence."""
+
+    id: str
+    source: Literal["table"] = "table"
+    title: str
+    columns: list[str]
+    rows: list[list[TableCell]]
+    markdown: str  # the same table rendered for the prose answer
+
+
 class ValidationReport(BaseModel):
     """What the deterministic citation validator found (and fixed)."""
 
@@ -121,6 +140,7 @@ class MultiAgentAnswer(BaseModel):
     answer: str  # markdown with inline [S#]/[D#] markers
     citations: list[Citation]  # only records actually cited, in prose order
     charts: list[ChartRecord]
+    tables: list[TableRecord] = []
     validation: ValidationReport
     sql_queries: list[SqlQueryRecord]
     searches: list[dict[str, Any]]

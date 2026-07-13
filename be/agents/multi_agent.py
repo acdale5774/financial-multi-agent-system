@@ -206,6 +206,7 @@ def _assemble(
         answer=answer_text,
         citations=ledger.cited_subset(cited_ids),
         charts=list(ledger.charts.values()),
+        tables=list(ledger.tables.values()),
         validation=report,
         sql_queries=ledger.sql_queries,
         searches=ledger.searches,

@@ -93,9 +93,11 @@ with search_metrics (they are data, not schema).
 3. **Query with citation keys.** Project ticker (or company name), \
 fiscal_year, and fiscal_period in every SELECT so each figure is citable. \
 Aggregate, join, and LIMIT in SQL; prefer one well-shaped query over many.
-4. **Chart when asked.** After the data is queried (and therefore cited), \
-call create_chart with the citation ids to plot — never retype the numbers. \
-Embed the returned markdown image in your answer.
+4. **Visualize when it clarifies, not only when asked.** Chronological \
+trends and cross-company comparisons get create_chart; multi-metric \
+collations get create_table. Both take citation ids, never numbers — the \
+values are hydrated from the cited evidence. Embed the returned markdown \
+verbatim in your answer.
 5. **Self-correct.** A failed or implausible result (empty, wrong magnitude) \
 means diagnose with the discovery tools and retry — never present a failed \
 path as the answer.
@@ -142,7 +144,9 @@ look up metrics, project citation keys: ticker, fiscal_year, fiscal_period) \
 and the document rules (filtered searches, attribute claims to companies \
 and documents).
 3. Weave both into ONE answer: numeric claims cite [S#] ids, document claims \
-cite [D#] ids. Charts come from create_chart with cited data points only.
+cite [D#] ids. Charts and tables come from create_chart / create_table with \
+cited data points only; use them whenever a trend, comparison, or collation \
+would be clearer visually.
 """
     + _CITATION_RULES
 )

@@ -223,3 +223,58 @@ def test_query_financials_tool_injects_cite_ids(monkeypatch):
 
     assert payload["rows"][0]["cites"] == {"revenue": "S1"}
     assert payload["row_count"] == 1
+
+
+def test_create_table_hydrates_cells_and_returns_markdown(monkeypatch):
+    rows = [
+        {"ticker": "F", "fiscal_year": 2025, "fiscal_period": "Q1",
+         "revenue": 40659000000.0, "eps": 0.33},
+        {"ticker": "F", "fiscal_year": 2025, "fiscal_period": "Q2",
+         "revenue": 50184000000.0, "eps": 0.46},
+    ]
+    monkeypatch.setattr(lc_tools, "run_read_only_sql", lambda q, **kw: [dict(r) for r in rows])
+    ledger = multi_agent.EvidenceLedger()
+    tools = {t.name: t for t in lc_tools.make_toolsets(ledger)["quant"]}
+    tools["query_financials"].invoke({"query": "SELECT ..."})
+
+    payload = json.loads(tools["create_table"].invoke({
+        "title": "Ford quarterly",
+        "columns": ["Quarter", "Revenue", "EPS"],
+        "rows": [
+            {"label": "Q1 2025", "citation_ids": ["S1", "S2"]},
+            {"label": "Q2 2025", "citation_ids": ["S3", "S4"]},
+        ],
+    }))
+
+    assert payload["table_id"] == "T1"
+    assert "40.7B [S1]" in payload["markdown"]
+    assert "0.33 [S2]" in payload["markdown"]
+    table = ledger.tables["T1"]
+    assert table.rows[0][1].value == 40659000000.0
+    assert table.rows[0][1].citation_id == "S1"
+
+
+def test_create_chart_rejects_duplicate_ids_and_wrong_labels(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        lc_tools, "run_read_only_sql",
+        lambda q, **kw: [
+            {"ticker": "F", "fiscal_year": 2024, "fiscal_period": "FY", "revenue": 1.0}
+        ],
+    )
+    monkeypatch.setattr(chart_tool, "CHART_DIR", tmp_path)
+    ledger = multi_agent.EvidenceLedger()
+    tools = {t.name: t for t in lc_tools.make_toolsets(ledger)["quant"]}
+    tools["query_financials"].invoke({"query": "SELECT ..."})
+
+    dup = tools["create_chart"].invoke({
+        "title": "t", "kind": "line", "x": ["FY 2024", "FY 2024b"],
+        "series": [{"name": "rev", "citation_ids": ["S1", "S1"]}],
+    })
+    assert dup.startswith("ERROR") and "repeats" in dup
+
+    wrong_label = tools["create_chart"].invoke({
+        "title": "t", "kind": "line", "x": ["Q1 2025"],
+        "series": [{"name": "rev", "citation_ids": ["S1"]}],
+    })
+    assert wrong_label.startswith("ERROR") and "period" in wrong_label
+    assert ledger.charts == {}
