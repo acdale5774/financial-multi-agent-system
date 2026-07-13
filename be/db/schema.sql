@@ -25,10 +25,13 @@ CREATE TABLE IF NOT EXISTS companies (
     ticker      TEXT NOT NULL,
     name        TEXT NOT NULL,
     simfin_id   TEXT UNIQUE,          -- stable SimFin identifier
-    sector      TEXT,
+    sector      TEXT,                 -- from SimFin industries dataset
+    industry    TEXT,                 -- finer-grained than sector (e.g. 'Airlines')
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (ticker)
 );
+-- sector/industry are backfilled by ingestion/enrich_companies.py (the
+-- statement datasets don't carry them).
 
 -- Normalized financial line items. Kept intentionally generic (long/tall shape)
 -- so income/balance/cashflow metrics can share one table.
@@ -71,8 +74,9 @@ CREATE TABLE IF NOT EXISTS documents (
     document_date    DATE,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- TODO: Populate company_id by mapping Octus company names to SimFin tickers
---       so structured + document retrieval can join on one company key.
+-- company_id is backfilled by ingestion/enrich_companies.py (normalized-name
+-- matching of Octus company names onto SimFin companies); documents whose
+-- company isn't in SimFin keep NULL and are reported by the backfill.
 
 -- Chunked + embedded slices of documents for semantic search.
 -- vector(512) matches the model2vec potion-retrieval-32M embedder; changing

@@ -4,8 +4,10 @@ Python backend for the Financial Multi-Agent Intelligence System. It ingests dat
 stores it in Postgres (structured + pgvector), and exposes a FastAPI agent system
 that answers financial questions with **citations and charts**.
 
-> Status: **scaffold**. Modules are typed placeholders with docstrings and TODOs —
-> no full functionality yet.
+> Status: ingestion (structured + documents), the single-agent query interface
+> (`POST /ask`), and the multi-agent system (`POST /agent/ask`, routed
+> specialists with per-claim citations and charts) are implemented and tested.
+> See [`agents/README.md`](./agents/README.md) for the agent architecture.
 
 ## Layout
 
@@ -69,6 +71,14 @@ python -m ingestion.simfin_ingest --init-db --variant annual
 
 # Quarterly (Q1–Q4 by fiscal year):
 python -m ingestion.simfin_ingest --variant quarterly --statements income,balance,cashflow
+```
+
+After loading, enrich the store (idempotent; fulfills two schema TODOs):
+
+```bash
+# companies.sector/industry from SimFin's industries taxonomy, and
+# documents.company_id links via normalized-name matching (cross-source joins)
+python -m ingestion.enrich_companies
 ```
 
 Re-running is idempotent (`ON CONFLICT … DO UPDATE`) — it refreshes values rather

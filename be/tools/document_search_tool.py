@@ -45,6 +45,57 @@ class SearchResult:
     metadata: dict[str, Any]
 
 
+def document_coverage(database_url: str | None = None) -> dict[str, Any]:
+    """What the document corpus actually covers — the doc-side discovery tool.
+
+    The corpus is small (~12 companies) next to SimFin's 4,599, so an agent
+    must scope claims like "sector trends" to what exists. This is the
+    document analogue of the schema tools: real filter values instead of
+    guesses.
+    """
+    from tools.sql_tool import run_read_only_sql
+
+    per_company = run_read_only_sql(
+        """
+        SELECT d.company_name, c.ticker, d.sub_industry, d.doc_type,
+               count(*) AS documents,
+               min(d.document_date) AS first_date,
+               max(d.document_date) AS last_date
+        FROM documents d
+        LEFT JOIN companies c ON c.id = d.company_id
+        GROUP BY 1, 2, 3, 4
+        ORDER BY d.company_name, d.doc_type
+        """,
+        database_url=database_url,
+    )
+    qa_roles = run_read_only_sql(
+        """
+        SELECT DISTINCT metadata->>'qa_role' AS qa_role
+        FROM document_chunks
+        WHERE metadata ? 'qa_role'
+        ORDER BY 1
+        """,
+        database_url=database_url,
+    )
+    top_sections = run_read_only_sql(
+        """
+        SELECT metadata->>'section' AS section, count(*) AS chunks
+        FROM document_chunks
+        WHERE metadata ? 'section'
+        GROUP BY 1
+        ORDER BY count(*) DESC
+        LIMIT 25
+        """,
+        database_url=database_url,
+    )
+    return {
+        "coverage": list(per_company),
+        "filterable_keys": sorted(FILTERABLE_KEYS) + ["date_from", "date_to"],
+        "qa_roles": [r["qa_role"] for r in qa_roles],
+        "top_sections": list(top_sections),
+    }
+
+
 def search_documents(
     query: str,
     *,

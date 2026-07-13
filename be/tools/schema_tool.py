@@ -36,8 +36,11 @@ _SAMPLE_VALUE_MAX_CHARS = 120
 _TABLE_NOTES: dict[str, str] = {
     "companies": (
         "One row per company; `ticker` is unique. `id` is the canonical join key "
-        "(financials.company_id references it). Resolve names/tickers with the "
-        "resolve_company tool instead of guessing spellings."
+        "(financials.company_id and documents.company_id reference it). Resolve "
+        "names/tickers with the resolve_company tool instead of guessing spellings. "
+        "`sector` (broad, e.g. 'Industrials') and `industry` (finer, e.g. 'Airlines') "
+        "come from SimFin's industries taxonomy; a few companies have neither. "
+        "There is NO CEO/officer data in the structured store."
     ),
     "financials": (
         "SimFin financials in LONG/TALL shape: one row per (company_id, statement, "
@@ -50,13 +53,19 @@ _TABLE_NOTES: dict[str, str] = {
         "  * cashflow: 'FY' only (quarterly not loaded).\n"
         "- metric: snake_cased SimFin field names (e.g. 'revenue', 'net_income',\n"
         "  'shares_diluted'). Discover exact names with search_metrics — never guess.\n"
-        "- value: raw currency units (391035000000 = $391.035B); `currency` is per row.\n"
+        "- There is NO eps metric: compute eps = net_income / shares_diluted in SQL\n"
+        "  (NULLIF the denominator) and present it as computed.\n"
+        "- value: raw currency units (391035000000 = $391.035B); `currency` is per row\n"
+        "  and VARIES ACROSS COMPANIES — filter or group by currency in any\n"
+        "  cross-company comparison or ranking.\n"
         "- Fiscal year can differ from calendar year; `report_date` is the period end."
     ),
     "documents": (
         "Metadata for the unstructured corpus (SEC filings + earnings-call "
         "transcripts). Useful via SQL for counts/coverage questions (e.g. how many "
-        "10-Ks per company). The text itself lives in document_chunks."
+        "10-Ks per company). `company_id` joins to companies (the cross-source key; "
+        "NULL for the few documents whose company isn't in SimFin). The text itself "
+        "lives in document_chunks."
     ),
     "document_chunks": (
         "Chunked + embedded document text for semantic search. The `embedding` "
