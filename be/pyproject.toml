@@ -45,7 +45,7 @@ dev = [
 
 # Explicitly list the top-level packages so the build backend doesn't guess.
 [tool.hatch.build.targets.wheel]
-packages = ["app", "agents", "core", "db", "ingestion", "retrieval", "tools"]
+packages = ["app", "agents", "core", "db", "evals", "ingestion", "retrieval", "tools"]
 
 [tool.ruff]
 target-version = "py311"
