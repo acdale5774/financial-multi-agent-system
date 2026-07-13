@@ -56,33 +56,43 @@ CREATE INDEX IF NOT EXISTS idx_financials_company_period
 -- Unstructured documents (SEC filings, earnings-call transcripts)
 -- --------------------------------------------------------------------------
 
--- One row per source document.
+-- One row per source document (SEC filing or transcript).
 CREATE TABLE IF NOT EXISTS documents (
-    id            BIGSERIAL PRIMARY KEY,
-    company_id    BIGINT REFERENCES companies (id),
-    source        TEXT NOT NULL,      -- 'sec_filing' | 'earnings_transcript'
-    doc_type      TEXT,               -- e.g. '10-K', '10-Q', 'earnings_call'
-    title         TEXT,
-    url           TEXT,
-    published_at  DATE,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    id               BIGSERIAL PRIMARY KEY,
+    external_id      TEXT UNIQUE,     -- source-system (Octus) document id
+    company_id       BIGINT REFERENCES companies (id),  -- optional SimFin link
+    octus_company_id TEXT,
+    company_name     TEXT,
+    sub_industry     TEXT,
+    source           TEXT NOT NULL,   -- 'SEC Filing' | 'Transcript'
+    doc_type         TEXT,            -- '10-K' | '10-Q' | 'Transcript'
+    title            TEXT,
+    url              TEXT,
+    document_date    DATE,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- TODO: Populate company_id by mapping Octus company names to SimFin tickers
+--       so structured + document retrieval can join on one company key.
 
 -- Chunked + embedded slices of documents for semantic search.
--- The embedding dimension MUST match the embedding model chosen at ingest time.
--- TODO: Set the real dimension (e.g. 1536) once the embedding model is chosen.
+-- vector(512) matches the model2vec potion-retrieval-32M embedder; changing
+-- the embedding model means changing this dimension AND re-indexing
+-- (see core/config.py: EMBEDDING_MODEL / EMBEDDING_DIMENSION).
 CREATE TABLE IF NOT EXISTS document_chunks (
     id            BIGSERIAL PRIMARY KEY,
     document_id   BIGINT NOT NULL REFERENCES documents (id) ON DELETE CASCADE,
     chunk_index   INT NOT NULL,
     content       TEXT NOT NULL,
-    metadata      JSONB NOT NULL DEFAULT '{}',   -- citation context
-    embedding     vector(1536),
+    metadata      JSONB NOT NULL DEFAULT '{}',   -- citation + filter context
+    embedding     vector(512),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (document_id, chunk_index)
 );
 
--- TODO: Add an ANN index for fast similarity search once data exists and the
---       distance metric is chosen, e.g.:
---   CREATE INDEX ON document_chunks USING hnsw (embedding vector_cosine_ops);
---       (ivfflat is an alternative; it needs ANALYZE + a `lists` tuning value.)
+-- ANN index for cosine similarity search (pgvector HNSW).
+CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding
+    ON document_chunks USING hnsw (embedding vector_cosine_ops);
+
+-- GIN index so JSONB containment filters (metadata @> ...) stay fast.
+CREATE INDEX IF NOT EXISTS idx_document_chunks_metadata
+    ON document_chunks USING gin (metadata jsonb_path_ops);

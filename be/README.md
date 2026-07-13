@@ -86,6 +86,81 @@ run_read_only_sql(
 )
 ```
 
+## Document ingestion (SEC filings + transcripts → pgvector)
+
+The `case_study_data/` corpus (137 SEC filings as Workiva HTML, 105 transcripts
+as HTML-in-JSON) is chunked, embedded, and indexed into the pgvector
+`document_chunks` table:
+
+```bash
+python -m ingestion.document_ingest --init-db          # full corpus
+python -m ingestion.document_ingest --limit 5          # smoke test
+```
+
+### Chunking strategy (and why)
+
+Financial/legal text has strong native structure; the chunker follows it
+instead of using fixed-size windows:
+
+| Choice | Rationale |
+| --- | --- |
+| **Section-aware (filings)** — `Item 1A`, `Item 7`… headers are hard chunk boundaries; every chunk carries its section | 10-K/10-Q Items are self-contained legal units. A window spanning Risk Factors → MD&A produces chunks that embed as neither. Section metadata also enables scoped retrieval ("search only Risk Factors"). |
+| **Table-atomic** — financial tables are linearized row-by-row (`Revenue \| 61,643 \| 58,048`) and never split mid-table; flagged `content_kind='table'` | Splitting a table separates labels from values, destroying its meaning. Row linearization keeps each figure attached to its label and period. Workiva *layout* tables (cover pages) are detected by shape and flattened to plain text instead. |
+| **Turn-aware (transcripts)** — the unit is the speaker turn; Q&A pairs pack together within a section; attribution kept inline and in metadata | "Who said it" is the signal in a transcript — a CFO's answer ≠ an analyst's question. Splitting mid-turn orphans the statement from its speaker; merging across the Management-Discussion/Q&A boundary blurs prepared remarks with spontaneous answers. |
+| **Contextual header** — every chunk is prefixed `[Company \| doc type \| date \| section]` | A lightweight version of contextual retrieval: boilerplate passages ("fuel costs increased…") embed with their document identity, and citations render directly from the chunk. |
+| **~2,000-char target / 3,000 max, semantic boundaries** | Big enough for a complete thought or table, small enough for precise retrieval. Overlap is used only when hard-splitting an oversized unit (200 chars) — semantic boundaries make blind sliding-window overlap unnecessary. |
+
+### Vector database choice: pgvector
+
+Postgres + pgvector over Pinecone/FAISS, deliberately:
+
+- **One store, one join key** — structured SimFin financials and document chunks
+  live in the same database, so "retrievable alongside" is a SQL join, not a
+  cross-system sync. One `docker compose up`, one backup, one prod target
+  (RDS/Aurora supports pgvector).
+- **Real filtered retrieval** — metadata filters are indexed SQL (`JSONB @>`
+  with a GIN index) combined with HNSW ANN search in one query — no
+  application-side post-filtering like FAISS, no separate metadata-sync
+  pipeline like Pinecone.
+- **Right scale** — ~40k chunks × 512 dims is far below where a dedicated
+  vector DB pays for its operational cost. FAISS is an in-process index
+  (persistence/filtering DIY); Pinecone is a managed service (network hop,
+  another vendor) — justified at 10-100M+ vectors, not here.
+
+### Embeddings
+
+Local **model2vec** static embeddings (`potion-retrieval-32M`, 512-dim): no API
+key, free, offline, and the only local option that installs on this dev
+machine (Intel Mac + Python 3.14 — torch/onnxruntime have no wheels).
+Trade-off: below transformer-quality retrieval, mitigated by structure-aware
+chunks + contextual headers. The `Embedder` protocol
+(`ingestion/embeddings.py`) makes upgrading (e.g. Voyage `voyage-finance-2`)
+a config change + schema dimension bump + re-index.
+
+### Chunk metadata schema
+
+Every chunk carries JSONB metadata for precise filtered retrieval
+(`tools/document_search_tool.py`):
+
+| Key | Example | Purpose |
+| --- | --- | --- |
+| `company_name` / `octus_company_id` / `sub_industry` | `Delta Air Lines` / `2483` / `Passenger Airlines` | Scope to a company or industry |
+| `source_type` / `doc_type` | `SEC Filing` / `10-K` | Filings vs transcripts; form type |
+| `document_date` | `2024-10-10` | Time-bounded queries (`date_from`/`date_to`) |
+| `section` | `Part I · Item 1A. Risk Factors`, `Q&A` | Scope to a filing Item or call section |
+| `content_kind` | `text` \| `table` | Prefer tables for numeric questions |
+| `speakers` / `qa_role` | `["Glen Hauenstein"]` / `Answer` | Transcript attribution filters |
+
+```python
+from tools.document_search_tool import search_documents
+
+search_documents(
+    "fuel cost outlook",
+    k=5,
+    filters={"company_name": "Delta Air Lines", "doc_type": "10-Q"},
+)
+```
+
 ## Tooling
 
 ```bash

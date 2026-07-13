@@ -20,10 +20,18 @@ call them:
 A "hybrid" answer often uses both: pull the exact figures via SQL, then ground the
 explanation in cited passages from the documents.
 
-## Planned structure (not implemented yet)
+## Current implementation
 
-- `vector_search.py` — nearest-neighbor search + metadata filtering over pgvector.
-- `ranking.py` — optional re-ranking / fusion of structured + semantic results.
+Semantic retrieval is live in [`../tools/document_search_tool.py`](../tools/document_search_tool.py):
 
-> TODO: Decide whether re-ranking is needed and document the retrieval strategy
-> (top-k, similarity metric, metadata filters) here.
+- **Similarity**: cosine distance over 512-dim model2vec embeddings, served by
+  a pgvector **HNSW** index (`vector_cosine_ops`).
+- **Filtering**: chunk metadata is JSONB with a GIN index; exact-match filters
+  (`company_name`, `doc_type`, `section`, `content_kind`, `speakers`/`qa_role`)
+  use containment (`@>`) inside the same query as the ANN search, plus
+  `date_from`/`date_to` on `document_date` — no post-filtering.
+- **Citations**: every result carries document id, title, section, date, and
+  (for transcripts) speaker attribution.
+
+> TODO: Evaluate re-ranking / hybrid (BM25 + vector) fusion once the agent
+> layer generates real query traffic; static embeddings would benefit most.

@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     simfin_data_dir: str = "./_simfin_cache"
     simfin_market: str = "us"
 
+    # Document ingestion (SEC filings + transcripts).
+    documents_data_dir: str = "../case_study_data"
+
+    # Embeddings. model2vec static embeddings run locally with no API key or
+    # GPU — chosen because torch/onnxruntime don't install on this dev machine
+    # (Intel Mac + Python 3.14). Swap the model (and matching dimension +
+    # db/schema.sql vector size) to upgrade; re-index afterwards.
+    embedding_model: str = "minishlab/potion-retrieval-32M"
+    embedding_dimension: int = 512
+
 
 # Import this singleton wherever settings are needed.
 settings = Settings()

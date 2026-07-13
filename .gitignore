@@ -19,6 +19,10 @@ dist/
 _simfin_cache/
 **/_simfin_cache/
 
+# Case-study source corpus (294MB of SEC filings HTML + transcripts) — too
+# large for git; obtain separately and place at the repo root.
+case_study_data/
+
 # OS / editor
 .DS_Store
 .idea/

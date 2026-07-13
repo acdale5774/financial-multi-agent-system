@@ -21,6 +21,9 @@ dependencies = [
     "pandas>=2.2",
     # SimFin bulk-dataset SDK (structured financial data ingestion)
     "simfin>=0.8",
+    # Local static embeddings (numpy-only; torch/onnxruntime don't install on
+    # this dev machine). Swap for voyageai/openai via ingestion/embeddings.py.
+    "model2vec>=0.5",
     # HTTP client for external APIs (e.g. SEC)
     "httpx>=0.27",
     # TODO: Add an embedding/LLM provider dependency once chosen, e.g.
