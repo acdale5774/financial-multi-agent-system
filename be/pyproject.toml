@@ -19,7 +19,9 @@ dependencies = [
     "pgvector>=0.3",
     # Structured-data handling (SimFin normalization)
     "pandas>=2.2",
-    # HTTP client for external APIs (e.g. SimFin, SEC)
+    # SimFin bulk-dataset SDK (structured financial data ingestion)
+    "simfin>=0.8",
+    # HTTP client for external APIs (e.g. SEC)
     "httpx>=0.27",
     # TODO: Add an embedding/LLM provider dependency once chosen, e.g.
     #       "anthropic", "openai", or "sentence-transformers".
@@ -35,7 +37,7 @@ dev = [
 
 # Explicitly list the top-level packages so the build backend doesn't guess.
 [tool.hatch.build.targets.wheel]
-packages = ["app", "agents", "ingestion", "retrieval", "tools"]
+packages = ["app", "agents", "core", "db", "ingestion", "retrieval", "tools"]
 
 [tool.ruff]
 target-version = "py311"

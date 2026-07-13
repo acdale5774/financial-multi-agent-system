@@ -15,6 +15,10 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# SimFin downloaded bulk-dataset cache
+_simfin_cache/
+**/_simfin_cache/
+
 # OS / editor
 .DS_Store
 .idea/

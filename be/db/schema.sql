@@ -39,9 +39,10 @@ CREATE TABLE IF NOT EXISTS financials (
     company_id    BIGINT NOT NULL REFERENCES companies (id),
     statement     TEXT NOT NULL,      -- 'income' | 'balance' | 'cashflow'
     fiscal_year   INT NOT NULL,
-    fiscal_period TEXT NOT NULL,      -- 'FY' | 'Q1'..'Q4'
-    currency      TEXT NOT NULL DEFAULT 'USD',
-    metric        TEXT NOT NULL,      -- e.g. 'revenue', 'net_income'
+    fiscal_period TEXT NOT NULL,      -- 'FY' (annual) | 'Q1'..'Q4' (quarterly)
+    currency      TEXT,
+    report_date   DATE,               -- period end / report date from SimFin
+    metric        TEXT NOT NULL,      -- snake_cased, e.g. 'revenue', 'net_income'
     value         NUMERIC,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (company_id, statement, fiscal_year, fiscal_period, metric)

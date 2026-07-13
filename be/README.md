@@ -55,6 +55,37 @@ uvicorn app.main:app --reload --port 8000
 # -> http://localhost:8000/health
 ```
 
+## Data ingestion (SimFin → Postgres)
+
+Structured financials are pulled with the [`simfin`](https://github.com/SimFin/simfin)
+SDK (bulk datasets), normalized to a **long/tall** shape (one row per
+company/statement/period/metric), and upserted into Postgres. Set a real
+`SIMFIN_API_KEY` in `.env` (a free account at https://app.simfin.com/ gives you a
+key — the legacy `free` key now returns HTTP 401 on bulk downloads).
+
+```bash
+# Annual income/balance/cashflow; --init-db applies db/schema.sql first.
+python -m ingestion.simfin_ingest --init-db --variant annual
+
+# Quarterly (Q1–Q4 by fiscal year):
+python -m ingestion.simfin_ingest --variant quarterly --statements income,balance,cashflow
+```
+
+Re-running is idempotent (`ON CONFLICT … DO UPDATE`) — it refreshes values rather
+than duplicating rows. Once loaded, data is retrievable via the read-only SQL tool
+(`tools/sql_tool.py`), e.g.:
+
+```python
+from tools.sql_tool import run_read_only_sql
+
+run_read_only_sql(
+    "SELECT c.ticker, f.fiscal_year, f.value "
+    "FROM financials f JOIN companies c ON c.id = f.company_id "
+    "WHERE f.metric = 'revenue' AND f.statement = 'income' "
+    "ORDER BY f.fiscal_year"
+)
+```
+
 ## Tooling
 
 ```bash
