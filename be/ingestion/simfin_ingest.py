@@ -134,8 +134,8 @@ def _load_company_info(
         info[ticker] = {
             "simfin_id": _opt_str(row.get("SimFinId")),
             "name": _opt_str(row.get("Company Name")) or ticker,
-            # Sector name may require the industries dataset; left as best-effort.
-            # TODO: enrich sector via sf.load_industries() join on IndustryId.
+            # The statement datasets don't carry sector; ingestion/enrich_companies.py
+            # backfills sector/industry from the SimFin industries dataset.
             "sector": _opt_str(row.get("Sector")),
         }
     return info
