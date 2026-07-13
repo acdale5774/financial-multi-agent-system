@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     embedding_model: str = "minishlab/potion-retrieval-32M"
     embedding_dimension: int = 512
 
+    # Agent layer (structured-data query interface). If the key is empty, the
+    # OpenAI SDK's own resolution (OPENAI_API_KEY env var) is used instead.
+    openai_api_key: str = ""
+    agent_model: str = "gpt-5.5"
+    agent_max_iterations: int = 15
+
 
 # Import this singleton wherever settings are needed.
 settings = Settings()

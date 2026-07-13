@@ -26,9 +26,9 @@ dependencies = [
     "model2vec>=0.5",
     # HTTP client for external APIs (e.g. SEC)
     "httpx>=0.27",
-    # TODO: Add an embedding/LLM provider dependency once chosen, e.g.
-    #       "anthropic", "openai", or "sentence-transformers".
-    # TODO: Add the agent framework dependency (or keep a native tool-calling loop).
+    # LLM provider for the agent layer (native tool-calling loop, no
+    # framework — see agents/README.md for the rationale).
+    "openai>=1.100",
 ]
 
 [project.optional-dependencies]
