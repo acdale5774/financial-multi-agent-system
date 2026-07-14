@@ -57,6 +57,9 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "e2e: real end-to-end test against a live Postgres and OpenAI model; auto-skips unless both are available (see tests/test_e2e_smoke.py)",
+]
 
 [tool.mypy]
 python_version = "3.11"

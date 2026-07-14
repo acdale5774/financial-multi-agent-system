@@ -7,6 +7,15 @@ to answer one question with evidence instead of intuition:
 > should be promoted from curated prose notes (`tools/schema_tool.py`
 > `_TABLE_NOTES`) into a governed, machine-readable model *first*?
 
+> **Scope — read this first.** This is a **targeted regression suite covering
+> six high-risk financial semantics**, not a general accuracy benchmark and not
+> proof that text-to-SQL is "solved." Six cases is a smoke test: enough to catch
+> a regression in the traps that most often produce a confidently-wrong number,
+> far too few to characterise accuracy over the space of real questions
+> (paraphrases, ambiguous entities, unsupported metrics, adversarial phrasing).
+> The dimensions a fuller evaluation would add — and which are already seeded —
+> are named explicitly [below](#what-a-fuller-evaluation-would-measure).
+
 ## Why this exists
 
 The structured store is a long/tall `financials` table. The semantics that make
@@ -29,6 +38,14 @@ the passing cases are a regression net proving the curated notes still hold.
 | **Agent grading** (`run_agent`, `--agent`) | Postgres + `OPENAI_API_KEY` | The real NL→SQL agent answers the natural-language question; its prose is graded against the same ground truth (scale/rounding/sign-aware, reusing the citation validator's number matcher). Trap value present in the answer ⇒ failed-with-warning. |
 
 Every value in `cases.py` was **measured from the database**, not invented.
+
+Grading is **result equivalence, never exact SQL strings.** The agent is free to
+reach the answer by any valid formulation (a self-join, a window function, a CTE);
+it passes when the *value* in its prose matches the golden value under
+scale/rounding/sign-aware number matching (the same matcher the citation
+validator uses). This deliberately does not penalise a correct query written a
+different way — which also means the suite says nothing about SQL *style*, only
+about answer correctness.
 
 ## Running
 
@@ -68,6 +85,32 @@ so formalizing it into governed data is a scale/testability/portability
 investment, not a present correctness fix. The right trigger to build the
 declarative layer is when this harness (with harder cases or new sources) starts
 failing a category — this is that tripwire.
+
+## What a fuller evaluation would measure
+
+The six cases grade one thing well — **answer correctness on high-risk
+semantics** — and say nothing about the rest of the system. A production
+evaluation would score these dimensions; the table names each, what it checks,
+and where it stands so the gap is explicit rather than implied:
+
+| Dimension | What it checks | Status |
+|---|---|---|
+| **Result-set correctness** | Golden-value equivalence for a question (not SQL string) | ✅ this suite (ground-truth tier), 6 cases |
+| **NL→SQL robustness** | Same question, many paraphrases / ambiguous names / unsupported metrics all land correctly | ⚠️ one case each for entity ambiguity, period-mapping, derived metric; **no paraphrase or adversarial breadth** |
+| **Route accuracy** | Dispatcher picks the right specialist across question shapes | ❌ not scored — seeded by the `unsupported` case in `tests/test_e2e_smoke.py` |
+| **Citation precision** | The cited record actually *supports* the sentence (not just resolves) | ❌ not scored — needs semantic claim↔evidence pairing, not string checks (the honest known-limit in `agents/README.md`) |
+| **Citation completeness (recall)** | Every claim that needs a citation has one | ⚠️ counted as a warning-severity lint (`uncited_numeric_sentences`), not scored |
+| **Document-retrieval recall** | The chunk that answers a known question is in top-k | ❌ not scored — needs a labelled retrieval set; ties to the model2vec-vs-hybrid question |
+| **Unsupported-question behaviour** | Off-topic → canned answer, no specialist spend | ✅ asserted end-to-end in `tests/test_e2e_smoke.py` |
+| **Chart-to-source consistency** | Every plotted value traces to a cited data point | ✅ structurally enforced (`chart_tool` hydrates from the ledger) **and** asserted end-to-end in `test_e2e_smoke.py` |
+| **Latency & token usage** | Cost/time per route, so regressions are visible | ❌ not measured |
+
+Two of these (route sanity, chart-to-source) already have their first automated
+assertion in the end-to-end smoke test; the rest are named here so a reviewer
+sees a roadmap, not a blind spot. The highest-value next additions are a
+**paraphrase/ambiguity set** for NL→SQL robustness and a **labelled retrieval
+set** for recall — the two dimensions with the widest gap between "one case" and
+"characterised."
 
 ## Extending
 
