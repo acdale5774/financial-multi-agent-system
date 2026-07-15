@@ -26,7 +26,7 @@ from typing import Any
 
 from tools.sql_tool import run_read_only_sql
 
-# Truncate long cell values in sample rows (e.g. a 512-dim embedding vector)
+# Truncate long cell values in sample rows (e.g. an embedding vector)
 # so tool results stay small enough to feed back to the model.
 _SAMPLE_VALUE_MAX_CHARS = 120
 
@@ -68,8 +68,9 @@ _TABLE_NOTES: dict[str, str] = {
     ),
     "document_chunks": (
         "Chunked + embedded document text for semantic search. The `embedding` "
-        "column is a 512-dim vector — not meaningfully queryable via SQL; semantic "
-        "retrieval goes through the document search tool, not this interface."
+        "column is an embedding vector — not meaningfully queryable via SQL; "
+        "semantic retrieval goes through the document search tool, not this "
+        "interface."
     ),
 }
 

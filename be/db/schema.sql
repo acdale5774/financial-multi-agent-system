@@ -34,9 +34,10 @@ CREATE TABLE IF NOT EXISTS companies (
 -- statement datasets don't carry them).
 
 -- Normalized financial line items. Kept intentionally generic (long/tall shape)
--- so income/balance/cashflow metrics can share one table.
--- TODO: Revisit once normalize_simfin_data() defines the canonical metric set;
---       consider a wide, per-statement layout if that reads more clearly.
+-- so income/balance/cashflow metrics can share one table. This is a settled
+-- decision (trade-offs documented in be/README.md and evals/README.md): the
+-- cost is that query semantics carry the correctness burden, which the
+-- text-to-SQL eval harness (python -m evals) guards.
 CREATE TABLE IF NOT EXISTS financials (
     id            BIGSERIAL PRIMARY KEY,
     company_id    BIGINT NOT NULL REFERENCES companies (id),

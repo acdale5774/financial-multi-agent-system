@@ -73,7 +73,7 @@ python -m ingestion.simfin_ingest --init-db --variant annual
 python -m ingestion.simfin_ingest --variant quarterly --statements income,balance,cashflow
 ```
 
-After loading, enrich the store (idempotent; fulfills two schema TODOs):
+After loading, enrich the store (idempotent):
 
 ```bash
 # companies.sector/industry from SimFin's industries taxonomy, and
