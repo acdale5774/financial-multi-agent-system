@@ -100,17 +100,41 @@ and where it stands so the gap is explicit rather than implied:
 | **Route accuracy** | Dispatcher picks the right specialist across question shapes | ❌ not scored — seeded by the `unsupported` case in `tests/test_e2e_smoke.py` |
 | **Citation precision** | The cited record actually *supports* the sentence (not just resolves) | ❌ not scored — needs semantic claim↔evidence pairing, not string checks (the honest known-limit in `agents/README.md`) |
 | **Citation completeness (recall)** | Every claim that needs a citation has one | ⚠️ counted as a warning-severity lint (`uncited_numeric_sentences`), not scored |
-| **Document-retrieval recall** | The chunk that answers a known question is in top-k | ❌ not scored — needs a labelled retrieval set; ties to the model2vec-vs-hybrid question |
+| **Document-retrieval recall** | The chunk that answers a known question is in top-k | ✅ scored — 29-case labelled benchmark (`python -m evals.retrieval`), Recall@5/10 + MRR per strategy; results in `retrieval_report.md`. Settled the model2vec-vs-hybrid question with data (hybrid default). |
 | **Unsupported-question behaviour** | Off-topic → canned answer, no specialist spend | ✅ asserted end-to-end in `tests/test_e2e_smoke.py` |
 | **Chart-to-source consistency** | Every plotted value traces to a cited data point | ✅ structurally enforced (`chart_tool` hydrates from the ledger) **and** asserted end-to-end in `test_e2e_smoke.py` |
 | **Latency & token usage** | Cost/time per route, so regressions are visible | ❌ not measured |
 
 Two of these (route sanity, chart-to-source) already have their first automated
 assertion in the end-to-end smoke test; the rest are named here so a reviewer
-sees a roadmap, not a blind spot. The highest-value next additions are a
-**paraphrase/ambiguity set** for NL→SQL robustness and a **labelled retrieval
-set** for recall — the two dimensions with the widest gap between "one case" and
-"characterised."
+sees a roadmap, not a blind spot. The highest-value next addition is a
+**paraphrase/ambiguity set** for NL→SQL robustness — the labelled retrieval
+set has since been built (below).
+
+## The document-retrieval benchmark
+
+The second harness in this package compares the three retrieval strategies
+(dense / lexical / hybrid — see `../retrieval/README.md`) on 29 labelled
+cases across seven categories (semantic paraphrase, exact terminology,
+section-scoped, speaker-scoped, metadata-filtered, cross-document,
+unsupported). Ground truth is anchor passages located by reading the source
+documents and resolved with SQL substring scans — the retriever is never
+consulted while labelling, so the labels can't be circular. Methodology and
+limitations live in `retrieval_cases.py`; the committed scorecard is
+[`retrieval_report.md`](./retrieval_report.md) (+ `.json` with per-case
+detail).
+
+```bash
+# From be/ — needs only Postgres; no API key, no LLM.
+python -m evals.retrieval                       # print the scorecard
+python -m evals.retrieval --strategies lexical  # one strategy
+python -m evals.retrieval --write-report        # refresh the committed report
+```
+
+Exit code is non-zero if a supported case's ground-truth set resolves empty
+(labels drifted from the corpus) — the same build-break convention as golden
+SQL drift. Pytest coverage lives in `tests/test_retrieval_strategies.py`
+(RRF math, dispatch wiring, live lexical/hybrid queries).
 
 ## Extending
 

@@ -137,13 +137,26 @@ Postgres + pgvector over Pinecone/FAISS, deliberately:
   (persistence/filtering DIY); Pinecone is a managed service (network hop,
   another vendor) — justified at 10-100M+ vectors, not here.
 
+### Retrieval strategies: dense / lexical / hybrid
+
+Document search is no longer dense-only. A generated `tsvector` column (GIN
+index) adds Postgres full-text retrieval, and `RETRIEVAL_STRATEGY` selects
+`dense`, `lexical`, or `hybrid` (both legs fused with Reciprocal Rank
+Fusion). The default is **hybrid**, chosen from a 29-case labelled benchmark
+(`python -m evals.retrieval`; hybrid 77% Recall@10 / 0.655 MRR vs dense-only
+65% / 0.481). Design, trade-offs, and the honest limitations are in
+[`retrieval/README.md`](./retrieval/README.md); the committed scorecard is
+[`evals/retrieval_report.md`](./evals/retrieval_report.md).
+
 ### Embeddings
 
 Local **model2vec** static embeddings (`potion-retrieval-32M`, 512-dim): no API
 key, free, offline, and the only local option that installs on this dev
 machine (Intel Mac + Python 3.14 — torch/onnxruntime have no wheels).
 Trade-off: below transformer-quality retrieval, mitigated by structure-aware
-chunks + contextual headers. The `Embedder` protocol
+chunks + contextual headers, and now measured by the retrieval benchmark
+(dense-only is the weakest strategy — a local-dev constraint, not a
+production recommendation). The `Embedder` protocol
 (`ingestion/embeddings.py`) makes upgrading (e.g. Voyage `voyage-finance-2`)
 a config change + schema dimension bump + re-index.
 

@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     embedding_model: str = "minishlab/potion-retrieval-32M"
     embedding_dimension: int = 512
 
+    # Document retrieval strategy: 'dense' | 'lexical' | 'hybrid'. The default
+    # is chosen from the labeled benchmark (`python -m evals.retrieval`; report
+    # in evals/retrieval_report.md) — change it only with benchmark evidence.
+    # 2026-07 result: hybrid 77% R@10 / 0.655 MRR vs dense 65% / 0.481;
+    # lexical (81% / 0.653) is within 1-2 cases of hybrid — hybrid is chosen
+    # for robustness to the benchmark's known lexical-friendly label bias and
+    # because it inherits any future embedder upgrade automatically.
+    retrieval_strategy: str = "hybrid"
+    # Hybrid-only tuning: how many candidates each leg contributes to fusion,
+    # and the RRF constant (60 is the conventional default from the RRF paper;
+    # larger flattens the rank weighting).
+    retrieval_leg_k: int = 30
+    retrieval_rrf_k: int = 60
+
     # Agent layer (structured-data query interface). If the key is empty, the
     # OpenAI SDK's own resolution (OPENAI_API_KEY env var) is used instead.
     openai_api_key: str = ""

@@ -179,7 +179,9 @@ def make_toolsets(
         date_from: str | None = None,
         date_to: str | None = None,
     ) -> str:
-        """Semantic search over SEC filings and earnings-call transcripts.
+        """Search over SEC filings and earnings-call transcripts (the
+        retrieval strategy — dense, lexical, or hybrid — is server
+        configuration, not a parameter).
         Returns the most relevant chunks, each with a minted citation id —
         cite them as [D1]. Use exact filter values from document_coverage
         (e.g. doc_type='10-K', sub_industry='Passenger Airlines',

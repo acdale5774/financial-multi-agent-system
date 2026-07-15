@@ -97,6 +97,24 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding
     ON document_chunks USING hnsw (embedding vector_cosine_ops);
 
+-- Lexical leg of hybrid retrieval: full-text index over the chunk text.
+-- What is indexed and why: `content` alone. Every chunk's content already
+-- begins with its contextual header "[Company | doc type | date | section]"
+-- and transcript chunks keep speaker attribution inline, so indexing content
+-- covers body + company + doc type + section + speakers with one source of
+-- truth — no drift between an indexed copy and the metadata.
+-- Config 'english': stemming + stopword removal. Verified against this
+-- corpus on PG16: hyphenated jargon indexes as compound AND parts
+-- ('CASM-ex' -> 'casm-ex','casm','ex'), so websearch_to_tsquery phrase
+-- queries match it; acronyms (TRASM, DOCSIS) and standard ids (ASC 606)
+-- tokenize cleanly. No custom parser/dictionary until the retrieval
+-- benchmark (evals/retrieval.py) demonstrates one is needed.
+ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS content_tsv tsvector
+    GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_document_chunks_content_tsv
+    ON document_chunks USING gin (content_tsv);
+
 -- GIN index so JSONB containment filters (metadata @> ...) stay fast.
 CREATE INDEX IF NOT EXISTS idx_document_chunks_metadata
     ON document_chunks USING gin (metadata jsonb_path_ops);
