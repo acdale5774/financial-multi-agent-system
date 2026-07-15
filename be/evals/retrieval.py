@@ -27,7 +27,9 @@ nothing that pretends to be evidence, and the strategies differ interestingly
 here — vector search always returns *something*, full-text search can
 return nothing.
 
-Run it (needs only Postgres — no API key, no LLM):
+Run it (needs Postgres; no LLM. With EMBEDDING_PROVIDER=openai the dense and
+hybrid legs embed each case's query via the API — 29 embedding calls,
+fractions of a cent; `--strategies lexical` stays key-free):
     python -m evals.retrieval                      # all three strategies
     python -m evals.retrieval --strategies hybrid  # one strategy
     python -m evals.retrieval --write-report       # refresh the committed

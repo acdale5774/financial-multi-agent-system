@@ -132,7 +132,7 @@ Postgres + pgvector over Pinecone/FAISS, deliberately:
   with a GIN index) combined with HNSW ANN search in one query — no
   application-side post-filtering like FAISS, no separate metadata-sync
   pipeline like Pinecone.
-- **Right scale** — ~40k chunks × 512 dims is far below where a dedicated
+- **Right scale** — ~31k chunks × 1536 dims is far below where a dedicated
   vector DB pays for its operational cost. FAISS is an in-process index
   (persistence/filtering DIY); Pinecone is a managed service (network hop,
   another vendor) — justified at 10-100M+ vectors, not here.
@@ -143,22 +143,28 @@ Document search is no longer dense-only. A generated `tsvector` column (GIN
 index) adds Postgres full-text retrieval, and `RETRIEVAL_STRATEGY` selects
 `dense`, `lexical`, or `hybrid` (both legs fused with Reciprocal Rank
 Fusion). The default is **hybrid**, chosen from a 29-case labelled benchmark
-(`python -m evals.retrieval`; hybrid 77% Recall@10 / 0.655 MRR vs dense-only
-65% / 0.481). Design, trade-offs, and the honest limitations are in
+(`python -m evals.retrieval`; hybrid 96% Recall@10 / 0.779 MRR vs dense-only
+88% / 0.754 and lexical 81% / 0.653 with the current embedder). Design,
+trade-offs, and the honest limitations are in
 [`retrieval/README.md`](./retrieval/README.md); the committed scorecard is
 [`evals/retrieval_report.md`](./evals/retrieval_report.md).
 
 ### Embeddings
 
-Local **model2vec** static embeddings (`potion-retrieval-32M`, 512-dim): no API
-key, free, offline, and the only local option that installs on this dev
-machine (Intel Mac + Python 3.14 — torch/onnxruntime have no wheels).
-Trade-off: below transformer-quality retrieval, mitigated by structure-aware
-chunks + contextual headers, and now measured by the retrieval benchmark
-(dense-only is the weakest strategy — a local-dev constraint, not a
-production recommendation). The `Embedder` protocol
-(`ingestion/embeddings.py`) makes upgrading (e.g. Voyage `voyage-finance-2`)
-a config change + schema dimension bump + re-index.
+OpenAI **`text-embedding-3-small`** (1536-dim) via the `Embedder` protocol
+(`ingestion/embeddings.py`), using the same `OPENAI_API_KEY` the agent layer
+requires. The project started on local **model2vec** static embeddings
+(`potion-retrieval-32M`, 512-dim — free, offline, and the only option that
+installs on this dev machine: Intel Mac + Python 3.14, no torch/onnxruntime
+wheels); the retrieval benchmark then measured dense recall as the weakest
+link, and the embedder swap it motivated lifted hybrid Recall@10 from 77% to
+96% on identical cases (both scorecards are committed:
+[`evals/retrieval_report_model2vec.md`](./evals/retrieval_report_model2vec.md)
+is the baseline). The swap itself was the protocol working as designed:
+config change + `db/schema.sql` re-apply + `python -m ingestion.reembed`
+(~31k chunks, ~$0.30, ~10 min) — no ingestion or retrieval code changed.
+`EMBEDDING_PROVIDER=model2vec` restores fully-offline operation at the
+measured recall cost.
 
 ### Chunk metadata schema
 

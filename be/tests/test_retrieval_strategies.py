@@ -351,6 +351,25 @@ requires_db = pytest.mark.skipif(
 )
 
 
+def _query_embedder_available() -> bool:
+    """The dense leg embeds the query text, so with EMBEDDING_PROVIDER=openai
+    the dense/hybrid live tests also need an API key (a few embedding calls,
+    fractions of a cent). Lexical live tests stay Postgres-only."""
+    import os
+
+    from core.config import settings
+
+    if settings.embedding_provider != "openai":
+        return True
+    return bool(settings.openai_api_key or os.environ.get("OPENAI_API_KEY"))
+
+
+requires_query_embedder = pytest.mark.skipif(
+    not _query_embedder_available(),
+    reason="EMBEDDING_PROVIDER=openai needs OPENAI_API_KEY to embed queries",
+)
+
+
 @requires_db
 def test_live_lexical_finds_exact_term() -> None:
     results = search_documents("TRASM", k=5, strategy="lexical")
@@ -374,6 +393,7 @@ def test_live_lexical_applies_metadata_filters() -> None:
 
 
 @requires_db
+@requires_query_embedder
 def test_live_dense_behaviour_unchanged() -> None:
     """Dense mode is the pre-hybrid code path: cosine scores, descending."""
     results = search_documents("fuel cost hedging", k=5, strategy="dense")
@@ -386,6 +406,7 @@ def test_live_dense_behaviour_unchanged() -> None:
 
 
 @requires_db
+@requires_query_embedder
 def test_live_hybrid_is_deduplicated_and_deterministic() -> None:
     kwargs: dict[str, Any] = dict(k=10, strategy="hybrid")
     first = search_documents("JetBlue CASM ex-fuel outlook", **kwargs)

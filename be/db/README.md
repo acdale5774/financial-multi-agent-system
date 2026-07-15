@@ -24,7 +24,11 @@ psql "$DATABASE_URL" -f be/db/schema.sql
 ## Notes
 
 - The `document_chunks.embedding` dimension must match the embedding model chosen
-  during ingestion — update both together.
+  during ingestion — update both together. Currently `vector(1536)` for OpenAI
+  `text-embedding-3-small`; re-applying `schema.sql` against an older 512-dim
+  (model2vec) database retypes the column and **discards the old vectors**
+  (they are not comparable across models) — repopulate with
+  `python -m ingestion.reembed` (~31k chunks, ~$0.30, a few minutes).
 - `content_tsv` is `GENERATED ALWAYS AS (to_tsvector('english', content))
   STORED` — it maintains itself on insert/update; adding it to an existing
   database is a table rewrite (~25s at 31k chunks locally). Existing

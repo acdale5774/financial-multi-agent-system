@@ -1,38 +1,38 @@
 {
-  "run_date": "2026-07-15",
+  "run_date": "2026-07-14",
   "k_max": 10,
   "summaries": {
     "dense": {
       "supported_cases": 26,
-      "recall@5": 0.8461538461538461,
-      "recall@10": 0.8846153846153846,
-      "mrr": 0.7544871794871795,
+      "recall@5": 0.5769230769230769,
+      "recall@10": 0.6538461538461539,
+      "mrr": 0.48108974358974355,
       "zero_result_rate": 0.0,
       "errors": [],
       "by_category": {
         "semantic": {
           "cases": 6,
-          "recall@5": 0.6666666666666666,
-          "recall@10": 0.6666666666666666,
-          "mrr": 0.5833333333333334
+          "recall@5": 0.3333333333333333,
+          "recall@10": 0.3333333333333333,
+          "mrr": 0.3333333333333333
         },
         "exact_term": {
           "cases": 6,
-          "recall@5": 0.8333333333333334,
-          "recall@10": 0.8333333333333334,
-          "mrr": 0.8333333333333334
+          "recall@5": 0.6666666666666666,
+          "recall@10": 0.6666666666666666,
+          "mrr": 0.6666666666666666
         },
         "section_scoped": {
           "cases": 4,
-          "recall@5": 1.0,
-          "recall@10": 1.0,
-          "mrr": 0.8125
+          "recall@5": 0.25,
+          "recall@10": 0.5,
+          "mrr": 0.07500000000000001
         },
         "speaker_scoped": {
           "cases": 4,
-          "recall@5": 0.75,
+          "recall@5": 1.0,
           "recall@10": 1.0,
-          "mrr": 0.4666666666666667
+          "mrr": 0.5208333333333334
         },
         "metadata_filtered": {
           "cases": 3,
@@ -42,9 +42,9 @@
         },
         "cross_document": {
           "cases": 3,
-          "recall@5": 1.0,
-          "recall@10": 1.0,
-          "mrr": 1.0
+          "recall@5": 0.3333333333333333,
+          "recall@10": 0.6666666666666666,
+          "mrr": 0.375
         }
       },
       "unsupported": {
@@ -106,35 +106,35 @@
     },
     "hybrid": {
       "supported_cases": 26,
-      "recall@5": 0.9230769230769231,
-      "recall@10": 0.9615384615384616,
-      "mrr": 0.7792124542124542,
+      "recall@5": 0.6923076923076923,
+      "recall@10": 0.7692307692307693,
+      "mrr": 0.6549145299145299,
       "zero_result_rate": 0.0,
       "errors": [],
       "by_category": {
         "semantic": {
           "cases": 6,
-          "recall@5": 0.8333333333333334,
-          "recall@10": 0.8333333333333334,
-          "mrr": 0.5416666666666666
+          "recall@5": 0.3333333333333333,
+          "recall@10": 0.6666666666666666,
+          "mrr": 0.3796296296296296
         },
         "exact_term": {
           "cases": 6,
-          "recall@5": 1.0,
-          "recall@10": 1.0,
-          "mrr": 1.0
+          "recall@5": 0.8333333333333334,
+          "recall@10": 0.8333333333333334,
+          "mrr": 0.8333333333333334
         },
         "section_scoped": {
           "cases": 4,
-          "recall@5": 1.0,
-          "recall@10": 1.0,
-          "mrr": 0.8
+          "recall@5": 0.75,
+          "recall@10": 0.75,
+          "mrr": 0.75
         },
         "speaker_scoped": {
           "cases": 4,
-          "recall@5": 0.75,
+          "recall@5": 1.0,
           "recall@10": 1.0,
-          "mrr": 0.6190476190476191
+          "mrr": 0.6875
         },
         "metadata_filtered": {
           "cases": 3,
@@ -144,9 +144,9 @@
         },
         "cross_document": {
           "cases": 3,
-          "recall@5": 1.0,
-          "recall@10": 1.0,
-          "mrr": 0.7777777777777778
+          "recall@5": 0.3333333333333333,
+          "recall@10": 0.3333333333333333,
+          "mrr": 0.3333333333333333
         }
       },
       "unsupported": {
@@ -165,16 +165,8 @@
         "filters": {},
         "relevant_count": 38,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          2,
-          3,
-          6,
-          7,
-          8,
-          9
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -184,12 +176,12 @@
         "filters": {},
         "relevant_count": 17,
         "result_count": 10,
-        "first_relevant_rank": 2,
+        "first_relevant_rank": 1,
         "relevant_ranks": [
-          2,
+          1,
+          3,
           5,
-          6,
-          7
+          8
         ],
         "error": null
       },
@@ -214,15 +206,9 @@
         "first_relevant_rank": 1,
         "relevant_ranks": [
           1,
-          2,
           3,
-          4,
           5,
-          6,
-          7,
-          8,
-          9,
-          10
+          7
         ],
         "error": null
       },
@@ -244,10 +230,8 @@
         "filters": {},
         "relevant_count": 43,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -260,10 +244,8 @@
         "first_relevant_rank": 1,
         "relevant_ranks": [
           1,
-          2,
-          3,
-          4,
-          5
+          6,
+          9
         ],
         "error": null
       },
@@ -274,19 +256,8 @@
         "filters": {},
         "relevant_count": 82,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -373,12 +344,9 @@
         "filters": {},
         "relevant_count": 5,
         "result_count": 10,
-        "first_relevant_rank": 1,
+        "first_relevant_rank": 10,
         "relevant_ranks": [
-          1,
-          2,
-          3,
-          4
+          10
         ],
         "error": null
       },
@@ -389,17 +357,10 @@
         "filters": {},
         "relevant_count": 28,
         "result_count": 10,
-        "first_relevant_rank": 1,
+        "first_relevant_rank": 5,
         "relevant_ranks": [
-          1,
-          2,
-          3,
-          4,
           5,
           6,
-          7,
-          8,
-          9,
           10
         ],
         "error": null
@@ -411,13 +372,8 @@
         "filters": {},
         "relevant_count": 15,
         "result_count": 10,
-        "first_relevant_rank": 4,
-        "relevant_ranks": [
-          4,
-          6,
-          7,
-          9
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -427,19 +383,8 @@
         "filters": {},
         "relevant_count": 137,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -452,9 +397,10 @@
         },
         "relevant_count": 2,
         "result_count": 10,
-        "first_relevant_rank": 6,
+        "first_relevant_rank": 4,
         "relevant_ranks": [
-          6
+          4,
+          10
         ],
         "error": null
       },
@@ -467,14 +413,10 @@
         },
         "relevant_count": 172,
         "result_count": 10,
-        "first_relevant_rank": 2,
+        "first_relevant_rank": 3,
         "relevant_ranks": [
-          2,
           3,
-          4,
-          5,
-          6,
-          8,
+          7,
           10
         ],
         "error": null
@@ -489,11 +431,10 @@
         },
         "relevant_count": 3,
         "result_count": 10,
-        "first_relevant_rank": 1,
+        "first_relevant_rank": 2,
         "relevant_ranks": [
-          1,
           2,
-          3
+          8
         ],
         "error": null
       },
@@ -506,9 +447,10 @@
         },
         "relevant_count": 46,
         "result_count": 10,
-        "first_relevant_rank": 5,
+        "first_relevant_rank": 1,
         "relevant_ranks": [
-          5
+          1,
+          6
         ],
         "error": null
       },
@@ -579,9 +521,8 @@
           1,
           2,
           3,
-          4,
           5,
-          6
+          7
         ],
         "error": null
       },
@@ -592,16 +533,8 @@
         "filters": {},
         "relevant_count": 39,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -633,11 +566,9 @@
         "filters": {},
         "relevant_count": 20,
         "result_count": 10,
-        "first_relevant_rank": 1,
+        "first_relevant_rank": 8,
         "relevant_ranks": [
-          1,
-          2,
-          3
+          8
         ],
         "error": null
       },
@@ -1187,15 +1118,10 @@
         "filters": {},
         "relevant_count": 38,
         "result_count": 10,
-        "first_relevant_rank": 2,
+        "first_relevant_rank": 6,
         "relevant_ranks": [
-          2,
-          4,
-          5,
           6,
-          7,
           8,
-          9,
           10
         ],
         "error": null
@@ -1214,6 +1140,7 @@
           3,
           4,
           5,
+          7,
           9
         ],
         "error": null
@@ -1225,10 +1152,8 @@
         "filters": {},
         "relevant_count": 34,
         "result_count": 10,
-        "first_relevant_rank": 4,
-        "relevant_ranks": [
-          4
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -1245,9 +1170,8 @@
           3,
           4,
           5,
-          6,
           7,
-          8,
+          9,
           10
         ],
         "error": null
@@ -1259,8 +1183,10 @@
         "filters": {},
         "relevant_count": 24,
         "result_count": 10,
-        "first_relevant_rank": null,
-        "relevant_ranks": [],
+        "first_relevant_rank": 9,
+        "relevant_ranks": [
+          9
+        ],
         "error": null
       },
       {
@@ -1270,10 +1196,8 @@
         "filters": {},
         "relevant_count": 43,
         "result_count": 10,
-        "first_relevant_rank": 2,
-        "relevant_ranks": [
-          2
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -1290,11 +1214,8 @@
           3,
           4,
           5,
-          6,
           7,
-          8,
-          9,
-          10
+          8
         ],
         "error": null
       },
@@ -1305,15 +1226,8 @@
         "filters": {},
         "relevant_count": 82,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          2,
-          3,
-          5,
-          6,
-          9
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -1329,7 +1243,7 @@
           3,
           5,
           8,
-          10
+          9
         ],
         "error": null
       },
@@ -1410,8 +1324,7 @@
         "relevant_ranks": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "error": null
       },
@@ -1429,10 +1342,8 @@
           3,
           4,
           5,
-          6,
-          7,
           8,
-          9
+          10
         ],
         "error": null
       },
@@ -1446,14 +1357,9 @@
         "first_relevant_rank": 1,
         "relevant_ranks": [
           1,
-          2,
-          3,
           4,
           5,
-          6,
           7,
-          8,
-          9,
           10
         ],
         "error": null
@@ -1465,13 +1371,8 @@
         "filters": {},
         "relevant_count": 137,
         "result_count": 10,
-        "first_relevant_rank": 5,
-        "relevant_ranks": [
-          5,
-          6,
-          7,
-          8
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -1484,10 +1385,10 @@
         },
         "relevant_count": 2,
         "result_count": 10,
-        "first_relevant_rank": 3,
+        "first_relevant_rank": 2,
         "relevant_ranks": [
-          3,
-          7
+          2,
+          6
         ],
         "error": null
       },
@@ -1504,10 +1405,7 @@
         "relevant_ranks": [
           1,
           2,
-          3,
           6,
-          7,
-          8,
           10
         ],
         "error": null
@@ -1525,8 +1423,8 @@
         "first_relevant_rank": 1,
         "relevant_ranks": [
           1,
-          2,
-          3
+          3,
+          6
         ],
         "error": null
       },
@@ -1539,9 +1437,12 @@
         },
         "relevant_count": 46,
         "result_count": 10,
-        "first_relevant_rank": 7,
+        "first_relevant_rank": 4,
         "relevant_ranks": [
-          7
+          4,
+          5,
+          8,
+          10
         ],
         "error": null
       },
@@ -1614,7 +1515,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "error": null
       },
@@ -1625,12 +1527,8 @@
         "filters": {},
         "relevant_count": 39,
         "result_count": 10,
-        "first_relevant_rank": 3,
-        "relevant_ranks": [
-          3,
-          8,
-          10
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {
@@ -1662,12 +1560,8 @@
         "filters": {},
         "relevant_count": 20,
         "result_count": 10,
-        "first_relevant_rank": 1,
-        "relevant_ranks": [
-          1,
-          3,
-          6
-        ],
+        "first_relevant_rank": null,
+        "relevant_ranks": [],
         "error": null
       },
       {

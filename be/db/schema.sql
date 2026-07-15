@@ -79,19 +79,39 @@ CREATE TABLE IF NOT EXISTS documents (
 -- company isn't in SimFin keep NULL and are reported by the backfill.
 
 -- Chunked + embedded slices of documents for semantic search.
--- vector(512) matches the model2vec potion-retrieval-32M embedder; changing
--- the embedding model means changing this dimension AND re-indexing
--- (see core/config.py: EMBEDDING_MODEL / EMBEDDING_DIMENSION).
+-- vector(1536) matches the OpenAI text-embedding-3-small embedder; changing
+-- the embedding model means changing this dimension AND re-embedding
+-- (see core/config.py: EMBEDDING_PROVIDER / EMBEDDING_MODEL /
+-- EMBEDDING_DIMENSION, and `python -m ingestion.reembed`).
 CREATE TABLE IF NOT EXISTS document_chunks (
     id            BIGSERIAL PRIMARY KEY,
     document_id   BIGINT NOT NULL REFERENCES documents (id) ON DELETE CASCADE,
     chunk_index   INT NOT NULL,
     content       TEXT NOT NULL,
     metadata      JSONB NOT NULL DEFAULT '{}',   -- citation + filter context
-    embedding     vector(512),
+    embedding     vector(1536),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (document_id, chunk_index)
 );
+
+-- Migration for databases created before the OpenAI embedder (vector(512),
+-- model2vec): when the stored dimension differs, drop the ANN index and
+-- retype the column, discarding the old vectors (they are not comparable
+-- across models anyway). Old embeddings become NULL — repopulate with
+-- `python -m ingestion.reembed`. Idempotent: no-op when dimensions match.
+DO $$
+DECLARE
+    current_dim int;
+BEGIN
+    SELECT atttypmod INTO current_dim
+    FROM pg_attribute
+    WHERE attrelid = 'document_chunks'::regclass AND attname = 'embedding';
+    IF current_dim IS DISTINCT FROM 1536 THEN
+        DROP INDEX IF EXISTS idx_document_chunks_embedding;
+        ALTER TABLE document_chunks
+            ALTER COLUMN embedding TYPE vector(1536) USING NULL;
+    END IF;
+END $$;
 
 -- ANN index for cosine similarity search (pgvector HNSW).
 CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding

@@ -100,7 +100,7 @@ and where it stands so the gap is explicit rather than implied:
 | **Route accuracy** | Dispatcher picks the right specialist across question shapes | ❌ not scored — seeded by the `unsupported` case in `tests/test_e2e_smoke.py` |
 | **Citation precision** | The cited record actually *supports* the sentence (not just resolves) | ❌ not scored — needs semantic claim↔evidence pairing, not string checks (the honest known-limit in `agents/README.md`) |
 | **Citation completeness (recall)** | Every claim that needs a citation has one | ⚠️ counted as a warning-severity lint (`uncited_numeric_sentences`), not scored |
-| **Document-retrieval recall** | The chunk that answers a known question is in top-k | ✅ scored — 29-case labelled benchmark (`python -m evals.retrieval`), Recall@5/10 + MRR per strategy; results in `retrieval_report.md`. Settled the model2vec-vs-hybrid question with data (hybrid default). |
+| **Document-retrieval recall** | The chunk that answers a known question is in top-k | ✅ scored — 29-case labelled benchmark (`python -m evals.retrieval`), Recall@5/10 + MRR per strategy; results in `retrieval_report.md`. Has now gated two decisions with data: the hybrid default, and the model2vec → OpenAI embedder upgrade (baseline archived as `retrieval_report_model2vec.md`). |
 | **Unsupported-question behaviour** | Off-topic → canned answer, no specialist spend | ✅ asserted end-to-end in `tests/test_e2e_smoke.py` |
 | **Chart-to-source consistency** | Every plotted value traces to a cited data point | ✅ structurally enforced (`chart_tool` hydrates from the ledger) **and** asserted end-to-end in `test_e2e_smoke.py` |
 | **Latency & token usage** | Cost/time per route, so regressions are visible | ❌ not measured |
@@ -125,7 +125,9 @@ limitations live in `retrieval_cases.py`; the committed scorecard is
 detail).
 
 ```bash
-# From be/ — needs only Postgres; no API key, no LLM.
+# From be/ — needs Postgres; no LLM. Dense/hybrid embed each case's query,
+# so EMBEDDING_PROVIDER=openai (the default) also needs OPENAI_API_KEY
+# (29 embedding calls — fractions of a cent). Lexical alone stays key-free.
 python -m evals.retrieval                       # print the scorecard
 python -m evals.retrieval --strategies lexical  # one strategy
 python -m evals.retrieval --write-report        # refresh the committed report

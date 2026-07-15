@@ -31,7 +31,7 @@ specialist holding both toolsets — is unrelated to hybrid *retrieval* here.)
 
 | Strategy | Mechanism | Strong at | Weak at |
 | --- | --- | --- | --- |
-| `dense` | Cosine over 512-dim model2vec embeddings, pgvector HNSW index | Paraphrase — queries sharing no tokens with the evidence | Rare exact terms (TRASM, ASC 606) the static embedder averages away |
+| `dense` | Cosine over 1536-dim OpenAI `text-embedding-3-small` embeddings, pgvector HNSW index | Paraphrase — queries sharing no tokens with the evidence | Rare exact terms/identifiers with thin representations; adds an API call per query |
 | `lexical` | Postgres full-text (`content_tsv`, GIN), `websearch_to_tsquery` then a quorum-ranked OR fallback | Exact jargon, acronyms, standard/product identifiers | True paraphrase; term-frequency ranking has **no IDF** (see limitations) |
 | `hybrid` | Both legs at `RETRIEVAL_LEG_K` depth, fused with Reciprocal Rank Fusion | Robustness across both query families | Can dilute a single leg's lone top hit (consensus effect) |
 
@@ -109,42 +109,65 @@ A 29-case labeled benchmark (`evals/retrieval_cases.py`; runner
 [`../evals/retrieval_report.md`](../evals/retrieval_report.md)) compares the
 three strategies on identical cases. Labels are anchor passages located by
 reading the source documents and verified with SQL substring scans — never
-by running the retriever, so ground truth is not circular. 2026-07 results
-(26 supported cases, k=10):
+by running the retriever, so ground truth is not circular.
+
+The benchmark has now scored **two embedders** on identical cases — the
+original local model2vec static embeddings and the current OpenAI
+`text-embedding-3-small` (the archived baseline is
+[`../evals/retrieval_report_model2vec.md`](../evals/retrieval_report_model2vec.md)).
+2026-07 results (26 supported cases, k=10):
 
 | Strategy | Recall@5 | Recall@10 | MRR |
 | --- | --- | --- | --- |
-| dense | 58% | 65% | 0.481 |
-| lexical | **77%** | **81%** | 0.653 |
-| hybrid | 69% | 77% | **0.655** |
+| dense (model2vec) | 58% | 65% | 0.481 |
+| dense (OpenAI) | 85% | 88% | 0.754 |
+| lexical (embedder-independent) | 77% | 81% | 0.653 |
+| hybrid (model2vec) | 69% | 77% | 0.655 |
+| **hybrid (OpenAI)** | **92%** | **96%** | **0.779** |
 
-**Default: `hybrid`.** The reasoning, stated honestly:
+The lexical row is identical across both runs — same corpus, labels, and
+queries — which is the control confirming the deltas are the embedder's.
+The embedder upgrade also resolved the benchmark's hardest cases: the
+entity-relabeled corpus trap (`sem-vistance-identity`), the cross-document
+ACP-sunset case, and — notably — `ex-trasm-delta`, where the contextual
+embedder now ranks TRASM evidence #1, covering the lexical leg's no-IDF
+blind spot from the other side.
 
-- vs **dense**: hybrid is decisively better (+12 pts Recall@10, +0.17 MRR).
-  Dense-only is the weakest configuration with the current static embedder.
-- vs **lexical**: the gap (1–2 cases) is inside this benchmark's noise floor,
-  and the labels have a known lexical-friendly bias — anchor-substring ground
-  truth counts a dense hit on a synonymous passage as a miss. Hybrid hedges
-  that bias, keeps dense's paraphrase ability for query shapes the benchmark
-  under-samples, and automatically benefits when the embedder is upgraded.
-- **Lexical is a legitimate alternative** if per-query latency/cost matters
-  most: it skips the embedding lookup entirely and posted the best measured
-  recall. A definitive lexical-vs-hybrid ruling needs a larger benchmark.
+**Default: `hybrid`.** With the model2vec embedder this was a hedged call
+(hybrid sat within noise of lexical); with the OpenAI embedder it is
+decisive: hybrid beats both single legs on every overall metric (+8 pts
+Recall@10 over dense, +15 over lexical) and is best-or-tied in every
+category's recall. Lexical remains the offline/key-free option (and still
+posts the best speaker-scoped MRR); dense-only is now close behind hybrid
+but leaves exact-term and paraphrase edge cases uncovered (hybrid took
+exact_term from 83% to 100% by fusing the legs).
 
-Hybrid retrieval is **not universally superior** — it lost individual cases
-to each single leg (see the per-case table in the report), and on a corpus
-with a strong transformer embedder the trade-offs could look different.
-It is the best-hedged default *for this corpus and this embedder, measured*.
+Hybrid retrieval is still **not universally superior** case-by-case — RRF's
+consensus effect cost it `sem-cableone-fwa-competition`, where lexical alone
+ranked the evidence 9th but fusion diluted it out of the top 10 (the one
+remaining k=10 miss). It is the best default *for this corpus and this
+embedder, measured*.
 
 ## Known limitations
 
 - **No IDF in lexical ranking.** Quorum mitigates but does not fix rare-term
-  starvation: `ex-trasm-delta` still misses at k=10 (first relevant at rank
-  11) because "delta + trend" quorum-ties with "delta + TRASM".
+  starvation: on `ex-trasm-delta` the lexical leg still misses at k=10
+  (first relevant at rank 11) because "delta + trend" quorum-ties with
+  "delta + TRASM". In hybrid mode the dense leg now covers this case (rank
+  1), but the lexical leg's ranking weakness remains and would resurface on
+  rare terms the embedder also handles poorly.
+- **RRF consensus dilution.** Fusion can push a single leg's lone hit out of
+  the final top-k: `sem-cableone-fwa-competition` (lexical rank 9, dense
+  miss) is hybrid's one remaining k=10 miss for exactly this reason.
 - **No abstention.** All strategies return k results even for queries with no
   relevant evidence (the three `unsupported` cases): similarity always
   produces neighbours, and the lexical OR-fallback always matches something.
   Downstream, the agent's judgment + citation validation are the guard.
+- **Query-time API dependency.** With `EMBEDDING_PROVIDER=openai`, dense and
+  hybrid add one embedding API call per query (latency + a network/key
+  dependency the lexical strategy doesn't have). `EMBEDDING_PROVIDER=model2vec`
+  restores fully-offline retrieval at measured recall cost (see the
+  archived baseline report).
 - **Benchmark scale.** 29 cases ranks strategies directionally; treat
   few-point differences as noise (stated in the report itself).
 - **Duplicate documents.** The corpus stores some filings 2–4× under distinct
@@ -155,14 +178,19 @@ It is the best-hedged default *for this corpus and this embedder, measured*.
 ## Upgrade triggers (measure first, then buy)
 
 - **Re-run the benchmark** after any chunker, embedder, or corpus change:
-  `python -m evals.retrieval --write-report` (needs only Postgres).
-- **Upgrade the embedder** (e.g. Voyage `voyage-finance-2` via the `Embedder`
-  protocol) when dense/semantic recall is the binding constraint — the
-  static model2vec embedder is a local-dev hardware constraint, not a
-  production recommendation; expect dense and hybrid numbers to rise.
-- **Add a reranker or BM25-grade engine** (e.g. a cross-encoder over the
-  fused top-50, or a BM25 extension) when rare-term cases like
-  `ex-trasm-delta` matter in production traffic — that failure is precisely
-  an IDF/reranking gap, now quantified by the benchmark.
+  `python -m evals.retrieval --write-report`.
+- **Embedder upgrades are now a measured, repeatable procedure** — the
+  model2vec → OpenAI `text-embedding-3-small` swap (config change +
+  `db/schema.sql` re-apply + `python -m ingestion.reembed`, ~$0.30/10 min at
+  this corpus size) lifted hybrid Recall@10 from 77% to 96%. The same
+  procedure and benchmark gate any future candidate (e.g. Voyage
+  `voyage-finance-2`, `text-embedding-3-large`): adopt it only if it beats
+  the committed scorecard.
+- **Add a reranker** (e.g. a cross-encoder over the fused top-50) if the
+  remaining head-precision gaps matter in production traffic — MRR 0.779
+  means the first relevant chunk still averages below rank 2, and the
+  consensus-dilution miss is a reranking-shaped problem. The case for a
+  BM25-grade lexical engine is weaker now that dense covers the measured
+  no-IDF failure.
 - **Grow the benchmark** (more paraphrase cases, labeled by a second person)
   before trusting any single-digit-point conclusion.
